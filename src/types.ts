@@ -1,6 +1,8 @@
 export const API_VERSION = "ropex.dev/v1";
 
-export type HarnessProfile = "standard" | "code" | "minimal" | "creator";
+export const HARNESS_PROFILES = ["standard", "code", "minimal", "creator"] as const;
+
+export type HarnessProfile = (typeof HARNESS_PROFILES)[number];
 
 export type ObjectMeta = {
   name: string;
@@ -9,6 +11,30 @@ export type ObjectMeta = {
 
 export type LabelSelector = {
   matchLabels?: Record<string, string>;
+};
+
+/** Which executor runs the `execute` stage for an agent. */
+export const WORKER_RUNTIME_KINDS_LIST = ["dsh", "claude-code", "codex", "copilot"] as const;
+
+export type WorkerRuntimeKind = (typeof WORKER_RUNTIME_KINDS_LIST)[number];
+
+/**
+ * Worker runtime selection. Omit for the default DeepSeek Harness (`dsh`).
+ * CLI kinds run an external headless coding agent in the worker worktree —
+ * Hermes still composes the brief, plans, and learns from the result.
+ */
+export type RuntimeSpec = {
+  kind: WorkerRuntimeKind;
+  /** Model passed to the CLI; falls back to the runtime's own default. */
+  model?: string;
+  /** Override the binary (absolute path, shim, or wrapper such as `npx`). */
+  command?: string;
+  /** Prefix args inserted before the runtime's own argv (e.g. `["claude"]` for npx). */
+  commandArgs?: string[];
+  /** Hard kill after this many ms (default 600000). */
+  timeoutMs?: number;
+  /** Extra env var names that must be present for this runtime to boot. */
+  requireEnv?: string[];
 };
 
 export type HarnessSpec = {
@@ -72,6 +98,8 @@ export type ScaleMode = "onDemand" | "static";
 
 export type AgentSpec = {
   harness: HarnessSpec;
+  /** Executor for the `execute` stage. Defaults to `{ kind: "dsh" }`. */
+  runtime?: RuntimeSpec;
   hermes: HermesSpec;
   github?: GithubSpec;
   /**

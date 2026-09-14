@@ -11,6 +11,7 @@ const PHASES: { id: string; label: string; ring: string; text: string; band: str
 const ownerStyle: Record<string, { dot: string; text: string }> = {
   hermes: { dot: "bg-teal-400", text: "text-teal-300" },
   deepseek: { dot: "bg-orange-400", text: "text-orange-300" },
+  worker: { dot: "bg-violet-400", text: "text-violet-300" },
   ropex: { dot: "bg-slate-400", text: "text-slate-300" },
 };
 

@@ -1,0 +1,98 @@
+# Mixed-runtime fleet: three agents, one queue, one policy.
+#
+# The control plane does not care which binary does the work — Hermes composes
+# the brief, plans, and learns for all three; only the `execute` stage differs.
+#
+# Runtimes other than `dsh` need their CLI installed and credentials present.
+# Check with: ropex runtimes
+apiVersion: ropex.dev/v1
+kind: Policy
+metadata:
+  name: default-guardrails
+spec:
+  maxReplicas: 8
+  budget:
+    maxUnits: 2000
+    windowMs: 3600000
+    scope: cluster
+  permissions:
+    # Denied *tool* names (fs, shell, web, github, …) are translated into each
+    # CLI's own permission flags; a runtime that cannot express one refuses to
+    # boot rather than running open. `deny: [web]`, for instance, works for
+    # claude-code and fails closed for codex, which gates by sandbox level.
+    # Names that are not registered tools — like this one — gate nothing in any
+    # runtime, so they are restated in the prompt as prohibitions instead.
+    deny: [exfiltrate]
+    requireApproval: []
+---
+# Default runtime: the in-process DeepSeek harness. No `runtime:` block needed.
+apiVersion: ropex.dev/v1
+kind: Agent
+metadata:
+  name: triage
+spec:
+  scale: onDemand
+  maxConcurrent: 4
+  idleTTLMs: 0
+  harness:
+    profile: minimal
+    plugins: [github]
+  hermes:
+    soul: souls/triage.md
+    memory: shared
+    learning: false
+    skills: []
+  github:
+    events: [issues.opened]
+    deliver: comment
+---
+# Claude Code CLI runs its own agentic loop inside the worker worktree.
+apiVersion: ropex.dev/v1
+kind: Agent
+metadata:
+  name: builder
+spec:
+  scale: onDemand
+  maxConcurrent: 2
+  idleTTLMs: 0
+  runtime:
+    kind: claude-code
+    model: claude-opus-5
+    timeoutMs: 900000
+  harness:
+    profile: code
+    plugins: [fs, shell, github]
+  hermes:
+    soul: souls/builder.md
+    memory: shared
+    learning: true
+    skills: [implement-issue]
+  github:
+    events: [issues.labeled]
+    deliver: pull_request
+---
+# Codex CLI, sandboxed. Codex gates by sandbox level (`--sandbox`) rather than
+# per tool, so denying `fs` or `shell` tightens it to read-only, while denying a
+# tool it cannot single out (such as `web`) fails this agent closed at boot.
+apiVersion: ropex.dev/v1
+kind: Agent
+metadata:
+  name: reviewer
+spec:
+  scale: onDemand
+  maxConcurrent: 2
+  idleTTLMs: 0
+  runtime:
+    kind: codex
+    model: gpt-5-codex
+  harness:
+    profile: standard
+    plugins: [fs, github]
+  hermes:
+    soul: souls/reviewer.md
+    memory: shared
+    learning: true
+    skills: []
+  github:
+    events: [pull_request.opened]
+    deliver: comment

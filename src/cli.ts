@@ -25,6 +25,7 @@ import { DEFAULT_STACK_MANIFEST, stackDown, stackUp } from "./stack.js";
 import { cloneAllGitRepos } from "./clone.js";
 import { simulatePolicies } from "./policy-sim.js";
 import { healthReport } from "./health.js";
+import { workerRuntimeScaffold } from "./worker-runtime.js";
 import { auditsFor, exportAuditJsonl } from "./audit.js";
 import { metricsPrometheus, metricsSnapshot } from "./metrics.js";
 import { deliveriesFor, replayDelivery } from "./journal.js";
@@ -110,6 +111,7 @@ Usage:
                                      Clone + sync declared GitRepos (Flux-style)
   ropex metrics [--prometheus]    Export cluster metrics
   ropex health                    Worker probes + backlog SLO
+  ropex runtimes                  Worker runtimes (dsh, claude-code, codex, copilot)
   ropex audit [--kind k] [--jsonl]  Control-plane event trail
   ropex journal                   Show delivery journal
   ropex skills [share <name> --to <agent>]
@@ -836,6 +838,18 @@ async function main(argv: string[]): Promise<number> {
         return 0;
       }
       console.log(JSON.stringify(metricsSnapshot(state), null, 2));
+      return 0;
+    }
+    case "runtimes": {
+      const statuses = workerRuntimeScaffold();
+      if (rest.includes("--json")) {
+        console.log(JSON.stringify(statuses, null, 2));
+        return 0;
+      }
+      for (const s of statuses) {
+        console.log(`${s.ready ? "ready " : "      "} ${s.kind.padEnd(12)} ${s.label}`);
+        console.log(`        ${s.hint}`);
+      }
       return 0;
     }
     case "health": {

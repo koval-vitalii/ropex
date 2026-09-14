@@ -38,6 +38,7 @@ import { cloneStatusReport, cloneAllGitRepos } from "./clone.js";
 import { decideApproval } from "./approval.js";
 import { pruneAffinity } from "./affinity.js";
 import { DSH_PROFILE_PACKS, liveDshScaffold, resolveDshBackend } from "./dsh.js";
+import { resolveRuntimeKind, workerRuntimeScaffold } from "./worker-runtime.js";
 import { liveHermesScaffold, resolveHermesBackend } from "./hermes.js";
 import { githubAppScaffold } from "./github-app.js";
 import { rateLimitReport } from "./ratelimit.js";
@@ -447,6 +448,7 @@ export function buildControlPlaneView(state: ClusterState, root = process.cwd())
         })),
       };
     })(),
+    runtimes: workerRuntimeScaffold(),
     dsh: (() => {
       const scaffold = liveDshScaffold();
       const backend = resolveDshBackend();
@@ -566,6 +568,7 @@ function harnessSurface(agent: DesiredAgent): HarnessSurfaceView {
     plugins: [...agent.spec.harness.plugins],
     loop: loopModeFor(agent.spec.harness.profile),
     tools: toolsFor(agent.spec),
+    runtime: resolveRuntimeKind(agent.spec),
   };
 }
 
@@ -1103,6 +1106,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, opts: Se
       active: state.affinity?.length ?? 0,
       bindings: state.affinity ?? [],
     });
+  }
+  if (url.pathname === API_ROUTES.runtimes) {
+    return json(res, { runtimes: workerRuntimeScaffold() });
   }
   if (url.pathname === API_ROUTES.ratelimits) {
     return json(res, rateLimitReport(state));

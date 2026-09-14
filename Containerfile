@@ -21,3 +21,10 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -q -O - http://127.0.0.1:7780/api/v1/health || exit 1
 
 CMD ["node", "dist/cli.js", "up", "fleets/examples/github-control-plane.yaml", "--serve", "--port", "7780"]
+
+# Worker runtimes other than the default `dsh` need their CLI on PATH.
+# They are deliberately not bundled (large npm trees, and most deployments want
+# one): derive an image that installs what you need, e.g.
+#   RUN npm i -g @anthropic-ai/claude-code
+# then point spec.runtime.command or ROPEX_RUNTIME_BIN_<KIND> at the binary.
+# See docs/worker-runtimes.md.

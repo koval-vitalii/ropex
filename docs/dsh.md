@@ -1,3 +1,7 @@
+> **dsh is the default worker runtime, not the only one.** Agents can declare
+> `spec.runtime.kind: claude-code | codex | copilot` to run an external headless
+> coding agent instead — see [worker-runtimes.md](./worker-runtimes.md).
+
 # Live DeepSeek Harness (dsh) wiring
 
 Ropex executes Hermes plans through `bootDsh` (`src/dsh.ts`). The default backend is **embedded** (in-process Cordis harness) so every test and `ropex demo` runs the real Hermes→DeepSeek split without external packages.

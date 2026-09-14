@@ -1,6 +1,8 @@
+import { existsSync } from "node:fs";
+
 import { admitCalls } from "./admission.js";
 import { requestApprovals } from "./approval.js";
-import { bootDsh } from "./dsh.js";
+import { composeBrief } from "./brief.js";
 import { createHermes, bootHermes } from "./hermes.js";
 import { buildAgentImage, type ImageResolveOptions } from "./image.js";
 import { recordDelivery } from "./journal.js";
@@ -10,6 +12,7 @@ import { maybeExportRememberedFact } from "./gitmemory.js";
 import { isOnDemandAgent } from "./scale.js";
 import { recordTrajectory } from "./trajectory.js";
 import { composeWorkflow } from "./workflow.js";
+import { bootWorker } from "./worker-runtime.js";
 import { ensureWorktree } from "./worktree.js";
 import type {
   ClusterState,
@@ -55,7 +58,10 @@ export async function runTask(
   }
 
   const root = opts.worktreeRoot ?? opts.root ?? process.cwd();
-  const worktree = worker.worktree ?? ensureWorktree(root, worker);
+  // A recorded worktree can outlive the directory (container restart, cleanup).
+  // Re-materialise it rather than handing a runtime a path that no longer exists.
+  const worktree =
+    worker.worktree && existsSync(worker.worktree) ? worker.worktree : ensureWorktree(root, worker);
   worker.worktree = worktree;
 
   const policy = effectivePolicy(state.policies);
@@ -73,16 +79,17 @@ export async function runTask(
     ],
   });
 
-  // DeepSeek harness — always coupled to Hermes (embedded by default).
-  const dsh = await bootDsh(agent.spec, {
+  // Executor for this agent — DeepSeek harness by default, or an external CLI
+  // runtime. Always coupled to Hermes: plan and learn stay ours either way.
+  const runtimeAdapter = await bootWorker(agent.spec, {
     ...policy,
     hermes,
     memory: hermes.port,
     cwd: worktree,
   });
 
-  if (!hermes.port || !dsh.kernel) {
-    throw new Error("runTask requires Hermes brain and DeepSeek harness — both must be booted");
+  if (!hermes.port || !runtimeAdapter.kernel) {
+    throw new Error("runTask requires a Hermes brain and a worker runtime — both must be booted");
   }
 
   // compose (Hermes) — soul, memory, and skills are loaded at bootHermes time
@@ -121,10 +128,11 @@ export async function runTask(
       })),
     });
   }
-  const { steps: execSteps } = await dsh.execute({
-    thoughts: planned.thoughts,
-    calls: admission.allowed,
-  });
+  const brief = composeBrief(workflow, hermes, task, planned);
+  const { steps: execSteps } = await runtimeAdapter.execute(
+    { thoughts: planned.thoughts, calls: admission.allowed },
+    { task, brief },
+  );
 
   for (const step of execSteps) {
     if (step.thought) {
@@ -171,7 +179,7 @@ export async function runTask(
   // deliver (DeepSeek)
   let delivery: RunResult["delivery"];
   try {
-    const d = dsh.kernel.context().get<{
+    const d = runtimeAdapter.kernel.context().get<{
       kind: "comment" | "pull_request" | "check";
       send: (body: string) => { kind: "comment" | "pull_request" | "check"; body: string };
     }>("delivery");
@@ -185,7 +193,7 @@ export async function runTask(
   if (learned) {
     state.skills.push(learned);
     worker.skills = [...new Set([...worker.skills, learned.name])];
-    registerSkill(state, learned, `via ${dsh.pack.profile} pack`);
+    registerSkill(state, learned, `via ${runtimeAdapter.pack.profile} pack on ${runtimeAdapter.runtime}`);
   }
   // Prefer durable scopes for on-demand agents — worker ids do not survive destroy.
   let rememberScope: MemoryScope = hermes.port.context.policy.write;

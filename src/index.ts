@@ -107,6 +107,24 @@ export { watchOnce, watchLoop, watchDeclaredRepos, watchReposLoop, parseInterval
 export { resolveClonedRepoManifestPath } from "./gitrepo.js";
 export { bootDsh, profilePack, DSH_PROFILE_PACKS, liveDshScaffold, resolveDshBackend, dshPackageInstalled, resolveDshBin, loadLiveProfileMeta, runHeadlessDsh, resolveLlmApiKey, DEFAULT_HARNESS_MODEL } from "./dsh.js";
 export type { LiveDshScaffold, DshAdapter, DshBackend, LlmApiKey, LlmApiKeySource } from "./dsh.js";
+export {
+  bootWorker,
+  resolveRuntimeKind,
+  resolveRuntimeBin,
+  runtimeBinEnvVar,
+  credentialPresent,
+  workerRuntimeScaffold,
+  advisoryPreamble,
+  isCliRuntime,
+  WORKER_RUNTIME_KINDS,
+  DEFAULT_RUNTIME_TIMEOUT_MS,
+} from "./worker-runtime.js";
+export type { WorkerAdapter, WorkerRuntimeStatus } from "./worker-runtime.js";
+export { CLI_RUNTIMES, CLI_RUNTIME_KINDS, cliRuntime, classifyPolicy, isKnownRopexTool, KNOWN_ROPEX_TOOLS } from "./cli-runtimes.js";
+export type { CliRuntimeDescriptor, CliRuntimeKind, PermissionPlan, PolicyInput, CliArgvInput } from "./cli-runtimes.js";
+export { composeBrief } from "./brief.js";
+export { runProcess, binOnPath } from "./proc.js";
+export type { RunProcessResult, RunProcessOptions } from "./proc.js";
 export { recordDelivery, deliveriesFor, compactJournal, replayDelivery, JOURNAL_DEFAULT_KEEP } from "./journal.js";
 export { registerSkill, shareSkill, promoteSkill, skillVersions, skillsForAgent, latestSkill, skillsCatalog } from "./skills.js";
 export { deliverOutbound, outboundFor, signOutboundBody, ensureOutbound } from "./deliver.js";
