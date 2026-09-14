@@ -4,12 +4,12 @@
  * `@deepseek-ai/dsh` is installed and ROPEX_DSH_BACKEND=live.
  */
 
-import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import type { HermesPlan } from "./contracts.js";
 import { createHarness, loopModeFor, toolsFor, type HarnessLoop } from "./harness.js";
+import { runProcess } from "./proc.js";
 import type { AgentSpec, HarnessProfile, TrajectoryStep } from "./types.js";
-import type { HermesContract, MemoryPort } from "./contracts.js";
+import type { HermesContract, MemoryPort, WorkerExecContext } from "./contracts.js";
 import type { Kernel } from "./plugins.js";
 
 const require = createRequire(import.meta.url);
@@ -116,8 +116,14 @@ export type DshAdapter = {
   backend: DshBackend;
   pack: DshProfilePack;
   kernel: Kernel;
-  /** Run a Hermes-planned tool program through the harness loop. */
-  execute(plan: HermesPlan): Promise<{ observations: string[]; steps: TrajectoryStep[] }>;
+  /**
+   * Run the execute stage. `ctx` carries the composed brief for runtimes that
+   * drive their own agentic loop; the DeepSeek harness ignores it.
+   */
+  execute(
+    plan: HermesPlan,
+    ctx?: WorkerExecContext,
+  ): Promise<{ observations: string[]; steps: TrajectoryStep[] }>;
 };
 
 export type BootDshOptions = {
@@ -226,36 +232,17 @@ export function runHeadlessDsh(
     );
   }
   const timeoutMs = opts.timeoutMs ?? 120_000;
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [bin, "--profile", profile, task], {
-      cwd: opts.cwd,
-      env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    child.stdout?.on("data", (c) => {
-      stdout += String(c);
-    });
-    child.stderr?.on("data", (c) => {
-      stderr += String(c);
-    });
-    const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-      reject(new Error(`dsh headless timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-    child.on("error", (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      if (code !== 0) {
-        reject(new Error(`dsh headless exited ${code}: ${stderr.trim() || stdout.trim()}`));
-        return;
-      }
-      resolve(stdout.trim() || stderr.trim());
-    });
+  return runProcess(process.execPath, [bin, "--profile", profile, task], {
+    cwd: opts.cwd,
+    timeoutMs,
+  }).then((res) => {
+    if (res.timedOut) {
+      throw new Error(`dsh headless timed out after ${timeoutMs}ms`);
+    }
+    if (res.code !== 0) {
+      throw new Error(`dsh headless exited ${res.code}: ${res.stderr.trim() || res.stdout.trim()}`);
+    }
+    return res.stdout.trim() || res.stderr.trim();
   });
 }
 

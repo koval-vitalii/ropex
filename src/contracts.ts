@@ -12,6 +12,7 @@ import type {
   SharedMemoryFact,
   Task,
   TrajectoryStep,
+  WorkerRuntimeKind,
   WorkerStatus,
 } from "./types.js";
 
@@ -49,6 +50,16 @@ export type MemoryPort = {
 export type HermesPlan = {
   thoughts: string[];
   calls: Array<{ name: string; input: Record<string, unknown> }>;
+};
+
+/**
+ * Extra context handed to the execute stage.
+ * `dsh` ignores it; CLI runtimes use `brief` as the prompt for their own loop.
+ */
+export type WorkerExecContext = {
+  task: Task;
+  /** Composed prompt: soul + memory + skills + plan + task. */
+  brief: string;
 };
 
 /**
@@ -152,6 +163,8 @@ export type HarnessSurfaceView = {
   plugins: string[];
   loop: LoopMode;
   tools: string[];
+  /** Executor for this agent's `execute` stage (`dsh` unless declared). */
+  runtime: WorkerRuntimeKind;
 };
 
 /**
@@ -380,6 +393,19 @@ export type ControlPlaneView = {
     active: number;
     bindings: Array<{ key: string; workerId: string; agent: string; expiresAt: string }>;
   };
+  /** Every worker runtime and whether it is usable here. */
+  runtimes: Array<{
+    kind: WorkerRuntimeKind;
+    label: string;
+    binPresent: boolean;
+    bin?: string;
+    credentialPresent: boolean;
+    credentialSource?: string;
+    credentialEnv: string[];
+    ready: boolean;
+    hint: string;
+    docsUrl: string;
+  }>;
   dsh: {
     backend: "embedded" | "live";
     profiles: Array<{ profile: string; loop: string; plugins: string[]; description: string; dshProfile: string }>;
@@ -498,6 +524,7 @@ export const API_ROUTES = {
   drain: "/api/v1/drain",
   policySim: "/api/v1/policy/simulate",
   hygiene: "/api/v1/hygiene",
+  runtimes: "/api/v1/runtimes",
   pipeline: "/api/v1/pipeline",
   events: "/api/v1/events",
   stack: "/api/v1/stack",

@@ -164,7 +164,12 @@ export function createHermes(spec: AgentSpec, options: HermesCreateOptions = {})
     },
     learn(task, steps) {
       if (!spec.hermes.learning) return undefined;
-      if (steps.length < 2 && !task.event) return undefined;
+      // An external CLI runtime collapses a whole agentic session into one
+      // step, so the multi-step proxy for "real work happened" does not apply.
+      const autonomous = steps.some(
+        (s) => s.observation.trim() && s.calls.some((c) => c.plugin.startsWith("runtime:")),
+      );
+      if (steps.length < 2 && !task.event && !autonomous) return undefined;
       const slug = slugify(task.prompt).slice(0, 40);
       const name = `learned-${slug || "task"}`;
       if (skills.includes(name)) return undefined;

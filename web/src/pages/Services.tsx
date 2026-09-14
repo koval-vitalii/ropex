@@ -163,18 +163,37 @@ export function Services({ view }: { view: View }) {
             ["role", "compose · plan · learn"],
           ]}
         />
-        <ServiceCard
-          name="DeepSeek — harness"
-          tone="copper"
-          icon={<Cpu size={20} />}
-          backend={view.dsh.backend}
-          ready={view.dsh.liveReady}
-          rows={[
-            ["api key", view.dsh.apiKeyPresent ? view.dsh.apiKeySource ?? "present" : "none"],
-            ["profiles", String(view.dsh.profiles.length)],
-            ["role", "execute · deliver"],
-          ]}
-        />
+        {(view.runtimes ?? []).map((r) =>
+          r.kind === "dsh" ? (
+            <ServiceCard
+              key={r.kind}
+              name="DeepSeek — harness"
+              tone="copper"
+              icon={<Cpu size={20} />}
+              backend={view.dsh.backend}
+              ready={view.dsh.liveReady}
+              rows={[
+                ["api key", view.dsh.apiKeyPresent ? view.dsh.apiKeySource ?? "none" : "none"],
+                ["profiles", String(view.dsh.profiles.length)],
+                ["role", "execute · deliver"],
+              ]}
+            />
+          ) : (
+            <ServiceCard
+              key={r.kind}
+              name={r.label}
+              tone="violet"
+              icon={<Terminal size={20} />}
+              backend={r.kind}
+              ready={r.ready}
+              rows={[
+                ["binary", r.binPresent ? r.bin ?? "on PATH" : "not found"],
+                ["credentials", r.credentialSource ?? "none"],
+                ["role", "execute (autonomous)"],
+              ]}
+            />
+          ),
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -200,13 +219,14 @@ export function Services({ view }: { view: View }) {
         </Panel>
 
         <Panel>
-          <SectionHead title="DeepSeek surfaces" sub="profile · model · plugins · tools" />
+          <SectionHead title="Execute surfaces" sub="runtime · profile · model · plugins · tools" />
           <div className="space-y-2 px-5 pb-5">
             {view.harness.length === 0 ? <Empty>No agents applied.</Empty> : view.harness.map((h) => (
               <div key={h.agent} className="rounded-xl bg-ink-900/50 p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-100">{h.agent}</span>
                   <div className="flex gap-1.5">
+                    <Badge tone={h.runtime === "dsh" ? "copper" : "violet"}>{h.runtime}</Badge>
                     <Badge tone="copper">{h.profile}</Badge>
                     <Badge tone="muted">{h.loop}</Badge>
                   </div>

@@ -8,7 +8,7 @@ This repo is a GitOps control plane for agent fleets.
 - **Default scale is on-demand:** admit → spawn under `maxConcurrent` ∩ `Policy.maxReplicas` → run → destroy (`idleTTLMs: 0`). Opt into standing pools only with `scale: static`.
 - The controller reconciles definitions; the queue spawns ephemeral workers. Do not hard-code replica lists.
 - Memory and skills outlive workers: write to agent/fleet/cluster scopes (`src/memory.ts`, `src/gitmemory.ts`, skill registry). Worker-local facts are promoted on destroy.
-- **Hermes + DeepSeek are always coupled:** `bootHermes` → `bootDsh({ hermes })` → `runTask`. No simulation shortcuts.
+- **Hermes is always coupled to the executor:** `bootHermes` → `bootWorker({ hermes })` → `runTask`. No simulation shortcuts. Hermes owns compose/plan/learn for every runtime; only the `execute` stage is pluggable via `spec.runtime` (`dsh` by default, or the Claude Code / Codex / Copilot CLIs — see `docs/worker-runtimes.md`).
 - Default backends are **embedded** (in-process); live CLI adapters are optional (`ROPEX_*_BACKEND=live`).
 - Every run has one **start → transform → result** spine: `workflow.ts` phases (`intake`/`execute`/`result` via `workflowPhases()`); the executor `PipelineRun` mirrors it with typed `input`/`stages`/`result` (`pipelinePhase()` in `src/executor.ts`). Keep the spine intact when adding stages or ingress.
 - GitHub events, Task YAML, CLI, and **executor API** are work ingress (`src/github.ts`, `src/webhook.ts`, `src/tasks.ts`, `src/executor.ts`).
@@ -32,7 +32,8 @@ See [docs/operations.md](./docs/operations.md).
 | Area | Files |
 | --- | --- |
 | Spec / reconcile | `spec.ts`, `controller.ts`, `image.ts`, `worktree.ts`, `watch.ts`, `gitrepo.ts`, `clone.ts`, `tick.ts`, `canary.ts`, `snapshot.ts`, `drift.ts` |
-| Brain / execute | `hermes.ts`, `dsh.ts`, `harness.ts`, `plugins.ts`, `workflow.ts`, `runtime.ts` |
+| Brain / execute | `hermes.ts`, `dsh.ts`, `harness.ts`, `plugins.ts`, `workflow.ts`, `runtime.ts`, `brief.ts` |
+| Worker runtimes | `worker-runtime.ts` (registry + boot dispatch), `cli-runtimes.ts` (per-CLI descriptors), `proc.ts` (subprocess primitive) |
 | Executor API | `pipeline.ts`, `executor.ts` — multi-stage pipelines, SSE, scoped drain |
 | Memory / skills | `memory.ts`, `skills.ts`, `gitmemory.ts`, `contracts.ts` |
 | Queue / scale | `queue.ts`, `scheduler.ts`, `scale.ts` (on-demand spawn/destroy), `fanout.ts`, `admission.ts`, `approval.ts`, `autoscale.ts`, `budget.ts`, `placement.ts`, `fairness.ts` |
@@ -50,6 +51,7 @@ See [docs/operations.md](./docs/operations.md).
 - [docs/control-plane-ui.md](./docs/control-plane-ui.md) — UI deep-dive, stack buttons, live SSE
 - [docs/api.md](./docs/api.md) — HTTP routes including `/api/v1/stack`
 - [docs/executor-api.md](./docs/executor-api.md) — pipeline contract
+- [docs/worker-runtimes.md](./docs/worker-runtimes.md) — pluggable executors (dsh, Claude Code, Codex, Copilot)
 - [integrations/magentic/README.md](./integrations/magentic/README.md) — external UI adapter
 
 ## Overnight orthodoxy

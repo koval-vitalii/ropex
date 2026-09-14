@@ -115,3 +115,20 @@ See [control-plane-ui.md](./control-plane-ui.md) for UI mapping.
 - [Architecture](./architecture.md)
 - [Executor API](./executor-api.md)
 - [Control-plane UI](./control-plane-ui.md)
+
+## `GET /api/v1/runtimes`
+
+Worker runtimes and whether each is usable on this host.
+
+```json
+{
+  "runtimes": [
+    { "kind": "dsh", "label": "DeepSeek Harness (default)", "ready": true, "hint": "..." },
+    { "kind": "claude-code", "binPresent": true, "credentialSource": "ANTHROPIC_API_KEY", "ready": true, "hint": "..." }
+  ]
+}
+```
+
+The same list appears on `GET /api/v1/view` as `runtimes`, and each agent's
+`harness[]` entry carries its `runtime` kind. See
+[worker-runtimes.md](./worker-runtimes.md).

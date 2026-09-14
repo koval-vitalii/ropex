@@ -82,7 +82,8 @@ export type View = {
   canary: { ok: boolean; matched: number; mismatched: number; total: number; pctMatched: number; agents: Array<{ agent: string; matched: number; total: number; pctMatched: number }> };
   fairness: { claimWaitP50Ms: number; claimWaitP95Ms: number; claimWaitMaxMs: number; runDurationP50Ms: number; runDurationP95Ms: number; pendingByAgent: Record<string, number> };
   hermes: Array<{ agent: string; soul: string; skills: string[]; memoryBackend: string; learning: boolean; share: { read: string[]; write: string } }>;
-  harness: Array<{ agent: string; profile: string; model: string; plugins: string[]; loop: string; tools: string[] }>;
+  harness: Array<{ agent: string; profile: string; model: string; plugins: string[]; loop: string; tools: string[]; runtime: string }>;
+  runtimes: Array<{ kind: string; label: string; binPresent: boolean; bin?: string; credentialPresent: boolean; credentialSource?: string; credentialEnv: string[]; ready: boolean; hint: string; docsUrl: string }>;
   hermesLive: { backend: string; liveReady: boolean; packageInstalled: boolean; steps: string[] };
   dsh: { backend: string; liveReady: boolean; packageInstalled: boolean; apiKeyPresent: boolean; apiKeySource?: string; profiles: Array<{ profile: string; loop: string; plugins: string[]; description: string }> };
   skillCatalog: Array<{ name: string; version: number; originAgent: string; sharedWith: string[]; summary: string; coverage: number }>;

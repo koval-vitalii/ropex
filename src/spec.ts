@@ -12,7 +12,7 @@ import type {
   TaskManifest,
   MemoryManifest,
 } from "./types.js";
-import { API_VERSION } from "./types.js";
+import { API_VERSION, HARNESS_PROFILES, WORKER_RUNTIME_KINDS_LIST } from "./types.js";
 import { resolveMaxConcurrent, resolveScaleMode } from "./scale.js";
 
 export function parseManifests(raw: string): Manifest[] {
@@ -51,6 +51,13 @@ function validateManifest(data: unknown): Manifest {
       throw new Error("Task is missing spec.agent or spec.prompt");
     }
   }
+  if (kind === "Agent" || kind === "Fleet") {
+    const spec = m.spec as Record<string, unknown> | undefined;
+    const agentSpec = (kind === "Fleet"
+      ? (spec?.template as { spec?: Record<string, unknown> } | undefined)?.spec
+      : spec) as Record<string, unknown> | undefined;
+    validateAgentSpec(agentSpec, `${kind} ${metadata.name}`);
+  }
   if (kind === "Memory") {
     const spec = m.spec as { agent?: string; text?: string } | undefined;
     if (!spec?.agent || !spec?.text) {
@@ -58,6 +65,28 @@ function validateManifest(data: unknown): Manifest {
     }
   }
   return data as Manifest;
+}
+
+/** Structural checks the `as Manifest` cast cannot make. */
+function validateAgentSpec(spec: Record<string, unknown> | undefined, where: string): void {
+  const harness = spec?.harness as { profile?: unknown } | undefined;
+  if (harness?.profile !== undefined && !HARNESS_PROFILES.includes(harness.profile as never)) {
+    throw new Error(
+      `${where}: unsupported harness.profile "${String(harness.profile)}" (expected ${HARNESS_PROFILES.join(" | ")})`,
+    );
+  }
+  const runtime = spec?.runtime as
+    | { kind?: unknown; command?: unknown; commandArgs?: unknown }
+    | undefined;
+  if (runtime === undefined) return;
+  if (!WORKER_RUNTIME_KINDS_LIST.includes(runtime.kind as never)) {
+    throw new Error(
+      `${where}: unsupported runtime.kind "${String(runtime.kind)}" (expected ${WORKER_RUNTIME_KINDS_LIST.join(" | ")})`,
+    );
+  }
+  if (runtime.commandArgs !== undefined && runtime.command === undefined) {
+    throw new Error(`${where}: runtime.commandArgs requires runtime.command`);
+  }
 }
 
 export function labelsMatch(
@@ -89,6 +118,13 @@ function cloneAgentSpec(tpl: Omit<AgentSpec, "replicas"> & { replicas?: number }
     maxConcurrent: overrides.maxConcurrent ?? tpl.maxConcurrent,
     idleTTLMs: overrides.idleTTLMs ?? tpl.idleTTLMs,
     harness: { ...tpl.harness },
+    runtime: tpl.runtime
+      ? {
+          ...tpl.runtime,
+          commandArgs: tpl.runtime.commandArgs ? [...tpl.runtime.commandArgs] : undefined,
+          requireEnv: tpl.runtime.requireEnv ? [...tpl.runtime.requireEnv] : undefined,
+        }
+      : undefined,
     hermes: {
       ...tpl.hermes,
       skills: [...tpl.hermes.skills],

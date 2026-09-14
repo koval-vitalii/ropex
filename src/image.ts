@@ -56,6 +56,17 @@ export function agentImagePayload(agent: DesiredAgent, soulText: string): string
       : null,
     selector: agent.spec.selector?.matchLabels ?? null,
   };
+  // Conditional: agents without an explicit runtime keep their existing digest.
+  if (agent.spec.runtime) {
+    base.runtime = {
+      kind: agent.spec.runtime.kind,
+      model: agent.spec.runtime.model ?? null,
+      command: agent.spec.runtime.command ?? null,
+      commandArgs: agent.spec.runtime.commandArgs ?? null,
+      timeoutMs: agent.spec.runtime.timeoutMs ?? null,
+      requireEnv: agent.spec.runtime.requireEnv ? [...agent.spec.runtime.requireEnv].sort() : null,
+    };
+  }
   if (agent.spec.placement) {
     base.placement = {
       require: agent.spec.placement.require ?? null,

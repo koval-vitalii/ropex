@@ -7,7 +7,8 @@ import type { DesiredAgent, GithubSpec, HarnessProfile, HermesSpec } from "./typ
 import { buildAgentImage, type ImageResolveOptions } from "./image.js";
 import { resolveSharePolicy } from "./memory.js";
 
-export type WorkflowOwner = "hermes" | "deepseek" | "ropex";
+/** `worker` = an external CLI runtime (Claude Code, Codex, Copilot). */
+export type WorkflowOwner = "hermes" | "deepseek" | "ropex" | "worker";
 
 /**
  * Every stage belongs to exactly one phase of a single start → transform → result spine:
@@ -106,6 +107,15 @@ export type AgentWorkflow = {
   stages: WorkflowStage[];
 };
 
+/**
+ * Owner of the `execute` stage for an agent's declared runtime. Only `execute`
+ * moves: `deliver` still runs through the harness delivery plugin whichever
+ * runtime did the work.
+ */
+function executeOwner(agent: DesiredAgent): WorkflowOwner {
+  return (agent.spec.runtime?.kind ?? "dsh") === "dsh" ? "deepseek" : "worker";
+}
+
 /** Compose an immutable workflow from desired agent code (image). */
 export function composeWorkflow(
   agent: DesiredAgent,
@@ -128,6 +138,9 @@ export function composeWorkflow(
       plugins: [...image.harness.plugins],
       deliver: image.github?.deliver,
     },
-    stages: WORKFLOW_STAGES.map((s) => ({ ...s })),
+    stages: WORKFLOW_STAGES.map((s) => ({
+      ...s,
+      owner: s.id === "execute" ? executeOwner(agent) : s.owner,
+    })),
   };
 }

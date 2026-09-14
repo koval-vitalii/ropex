@@ -113,6 +113,7 @@ npx tsx src/cli.ts health
 | [**Forge-neutral tasks**](./docs/forge-neutral.md) | Task YAML without GitHub |
 | [**Hermes wiring**](./docs/hermes.md) | Embedded brain vs live `hermes-agent` |
 | [**DeepSeek wiring**](./docs/dsh.md) | Embedded harness vs live `@deepseek-ai/dsh` |
+| [**Worker runtimes**](./docs/worker-runtimes.md) | Swap the execute stage: dsh, Claude Code, Codex, Copilot |
 | [**Magentic integration**](./integrations/magentic/README.md) | External chat UI → Ropex executor |
 | [**Docs index**](./docs/README.md) | Full table of contents |
 
@@ -164,7 +165,9 @@ Example fleets: `fleets/examples/github-control-plane.yaml`, `forge-local.yaml`.
 
 **Hermes** (`src/hermes.ts`) — compose, plan, remember, learn. Soul + skills + scoped `MemoryPort`.
 
-**DeepSeek Harness** (`src/dsh.ts`, `src/plugins.ts`) — Cordis-shaped kernel: loop mode, tools, permissions, delivery plugin.
+**DeepSeek Harness** (`src/dsh.ts`, `src/plugins.ts`) — Cordis-shaped kernel: loop mode, tools, permissions, delivery plugin. The default worker runtime.
+
+**Pluggable executors** (`src/worker-runtime.ts`, `src/cli-runtimes.ts`) — `spec.runtime.kind` swaps the `execute` stage for an external headless coding agent (`claude -p`, `codex exec`, `copilot -p`) running in the worker worktree. Hermes still composes, plans, and learns; Ropex policy is translated into each CLI's own permission flags and fails closed when a runtime cannot express a denial. `ropex runtimes` reports what is usable. See [worker-runtimes.md](./docs/worker-runtimes.md).
 
 **Ropex glue** — `src/runtime.ts` runs the fixed workflow; `src/scale.ts` + `src/queue.ts` spawn/destroy on-demand workers; `src/controller.ts` reconciles definitions; `src/executor.ts` runs multi-stage pipelines for external orchestrators.
 
