@@ -231,7 +231,11 @@ if [[ $DO_CONTAINER -eq 1 ]]; then
   step "Checking the container runtime (npm run up)"
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
     ok "docker compose available (Docker Desktop WSL integration or engine in-distro)"
-  elif command -v podman >/dev/null 2>&1 && podman compose version >/dev/null 2>&1; then
+  elif command -v podman >/dev/null 2>&1 && { podman compose version >/dev/null 2>&1 || command -v podman-compose >/dev/null 2>&1; }; then
+    # `podman compose` shells out to the first `docker-compose`/`podman-compose` on
+    # PATH. With interop.appendWindowsPath=true and Docker Desktop installed, a
+    # non-functional Windows docker-compose shim can shadow a working native
+    # podman-compose — so a plain `podman compose version` can false-negative.
     ok "podman compose available"
   elif command -v apt-get >/dev/null 2>&1 && { [[ -n "$SUDO" ]] || [[ $EUID -eq 0 ]]; }; then
     ok "installing podman + podman-compose"

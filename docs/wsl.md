@@ -25,6 +25,15 @@ powershell -ExecutionPolicy Bypass -File scripts\wsl-bootstrap.ps1 -InstallWslCo
 
 That installs WSL 2 and Ubuntu 24.04 if missing, writes the tuned `.wslconfig`,
 clones the repo to `~/src/ropex` **inside** the distro, and runs the Linux setup.
+
+If the distro didn't already exist, `wsl --install -d <Distro>` opens an
+interactive console for the one-time username/password prompt and blocks until
+you finish it and exit that shell — run this script from a real interactive
+terminal for a first install. It cannot complete unattended (e.g. from CI or a
+non-interactive remote session): it will hang with no output at the clone step
+until something supplies that input. Installing into an already-registered
+distro (the common case for a re-run) skips this entirely.
+
 Then:
 
 ```powershell
@@ -163,6 +172,12 @@ Two supported paths:
 Neither is required for development: `scripts/stack-up.sh` falls back to running
 the control plane directly with `tsx`.
 
+If Docker Desktop is installed on Windows but its WSL integration is **off** for
+this distro, `interop.appendWindowsPath` still puts its non-functional
+`docker-compose` shim on `PATH` ahead of a working in-distro `podman-compose` —
+`wsl-setup.sh` and `wsl-doctor.sh` check for `podman-compose` directly so this
+doesn't read as "no compose available".
+
 ### Memory
 
 `.wslconfig` caps the VM at 8 GB / 4 CPUs with `autoMemoryReclaim = gradual`.
@@ -181,6 +196,8 @@ it if Windows starves. Edits need `wsl --shutdown` to apply.
 | DNS fails inside the distro | Generated `resolv.conf` clash | `wsl --shutdown`; if it persists set `generateResolvConf = false` and write `/etc/resolv.conf` yourself |
 | `npm install` hangs | Optional live DeepSeek tree | `bash scripts/bootstrap.sh` — see [README](../README.md#quick-start) |
 | Very slow installs/builds | Repo on `/mnt/c` | Re-clone under `~` |
+| `wsl-bootstrap.ps1` hangs with no output after "Provisioning" | Fresh distro install needs an interactive OOBE username/password prompt | Run from a real terminal, complete the prompt, exit that shell; see [Quick start](#quick-start--from-windows) |
+| `--skip-node` still fails with "no node on PATH" | Re-running via `wsl-bootstrap.ps1` uses a non-login shell that doesn't source `~/.bashrc` | Fixed by sourcing `~/.nvm/nvm.sh` before handing off to `wsl-setup.sh`; update if you're on an older copy of the script |
 
 Start every diagnosis with:
 

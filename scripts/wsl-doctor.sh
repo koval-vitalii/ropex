@@ -101,7 +101,10 @@ section "Container runtime (npm run up)"
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
   docker info >/dev/null 2>&1 && pass "docker compose" "$(docker compose version --short 2>/dev/null)" \
     || warn "docker compose" "CLI present but the daemon is unreachable — start Docker Desktop and enable WSL integration"
-elif command -v podman >/dev/null 2>&1 && podman compose version >/dev/null 2>&1; then
+elif command -v podman >/dev/null 2>&1 && { podman compose version >/dev/null 2>&1 || command -v podman-compose >/dev/null 2>&1; }; then
+  # `podman compose` shells out to the first docker-compose/podman-compose on
+  # PATH, so a Windows Docker Desktop shim pulled in by appendWindowsPath can
+  # shadow a working native podman-compose and make the plain check false-negative.
   pass "podman compose" "$(podman --version | awk '{print $3}')"
 else
   warn "compose" "none — 'npm run up' falls back to the local Node stack (fine for dev)"

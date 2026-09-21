@@ -142,6 +142,11 @@ else
   git clone "$Repo" "`$target"
 fi
 cd "`$target"
+# A prior run's nvm lives in ~/.bashrc, which this non-interactive, non-login
+# shell never sources — load it so --skip-node (or any step assuming node is
+# already on PATH) sees a node that setup itself would otherwise re-source.
+export NVM_DIR="`$HOME/.nvm"
+[ -s "`$NVM_DIR/nvm.sh" ] && \. "`$NVM_DIR/nvm.sh"
 exec bash scripts/wsl-setup.sh $SetupArgs
 "@
 
