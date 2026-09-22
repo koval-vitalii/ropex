@@ -139,6 +139,11 @@ if [ -d "`$target/.git" ]; then
 else
   echo "→ cloning $Repo into `$target"
   mkdir -p "`$(dirname "`$target")"
+  # A local (e.g. /mnt/*) -Repo is owned by a different uid than this distro's
+  # user from git's point of view, which git treats as "dubious ownership" and
+  # refuses to clone. Trust this specific path (git checks the .git dir, not
+  # the working tree root); a no-op when -Repo is a URL.
+  git config --global --add safe.directory "$Repo/.git" 2>/dev/null || true
   git clone "$Repo" "`$target"
 fi
 cd "`$target"
@@ -173,7 +178,11 @@ if ($code -ne 0) {
 Write-Step 'Done'
 Write-Host @"
   Open the environment:
-    wsl -d $Distro --cd ~/$TargetDir
+    wsl -d $Distro
+    cd ~/$TargetDir
+
+  (--cd ~/... resolves against the Windows side, not the distro's home — use
+  a plain cd once you're in the shell, or pass --cd an absolute Linux path.)
 
   Then:
     bash scripts/wsl-doctor.sh

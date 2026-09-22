@@ -38,8 +38,15 @@ Then:
 
 ```powershell
 wsl --shutdown                        # apply .wslconfig / wsl.conf
-wsl -d Ubuntu-24.04 --cd ~/src/ropex
+wsl -d Ubuntu-24.04
 ```
+```bash
+cd ~/src/ropex
+```
+
+(`wsl --cd ~/...` resolves `~` against the Windows side, not the distro's
+home, and fails or opens the wrong directory — `cd` once you're in the shell
+instead, or pass `--cd` an absolute Linux path like `--cd /home/<user>/src/ropex`.)
 
 Useful flags:
 

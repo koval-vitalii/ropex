@@ -79,6 +79,17 @@ if [[ $EUID -ne 0 ]]; then
   command -v sudo >/dev/null 2>&1 && SUDO="sudo"
 fi
 
+# A driver with no TTY (wsl-bootstrap.ps1 runs this via `wsl.exe -d <Distro> --
+# bash <script>`) can't answer a sudo password prompt, so an uncached sudo
+# ticket here would hang forever rather than fail. Degrade to the existing
+# "no sudo" paths instead; a real interactive `bash scripts/wsl-setup.sh` still
+# gets a normal password prompt since it has a TTY.
+if [[ -n "$SUDO" ]] && [[ ! -t 0 ]] && ! sudo -n true 2>/dev/null; then
+  warn "sudo needs a password and this shell has no terminal to ask on — skipping steps that need it"
+  note "grant passwordless sudo once (echo '$(id -un) ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/90-wsl-dev), or run 'bash scripts/wsl-setup.sh' yourself in an interactive shell"
+  SUDO=""
+fi
+
 # --- 0. environment guards -------------------------------------------------
 step "Checking the environment"
 
